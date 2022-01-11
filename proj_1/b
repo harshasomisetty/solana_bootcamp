@@ -1,0 +1,10 @@
+#!/bin/bash
+
+cd program
+cargo build-bpf
+PROG_ID=$(solana program deploy /Users/harshasomisetty/code/solana/bc_proj_1/program/target/deploy/echo.so  | awk '{print $3}')
+echo "${PROG_ID}"
+cd ..
+
+cd js
+node index.js "${PROG_ID}" echo_this
