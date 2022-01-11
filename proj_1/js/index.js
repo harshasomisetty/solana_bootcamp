@@ -35,13 +35,14 @@ const main = async () => {
     /** Public key of the program to assign as the owner of the created account */
     programId: programId,
   });
-  console.log("4");
+
+  // 0th instruction
   const idx = Buffer.from(new Uint8Array([0]));
   const messageLen = Buffer.from(
     new Uint8Array(new BN(echo.length).toArray("le", 4))
   );
   const message = Buffer.from(echo, "ascii");
-  console.log("5");
+
   let echoIx = new TransactionInstruction({
     keys: [
       {
@@ -53,21 +54,65 @@ const main = async () => {
     programId: programId,
     data: Buffer.concat([idx, messageLen, message]),
   });
-  console.log("6");
-  let tx = new Transaction();
-  tx.add(createIx).add(echoIx);
 
+  // 1st instruction
+  const idx1 = Buffer.from(new Uint8Array([1]));
+  const authority = new Keypair();
+
+  const buffer_seed = 10;
+  const buffer_seed_buf = Buffer.from(
+    new Uint8Array(new BN(buffer_seed).toArray("le", 8))
+  );
+
+  const authorized_buffer = (
+    await PublicKey.findProgramAddress(
+      ["authority", authority.publicKey.toBuffer(), buffer_seed_buf],
+      programId
+    )
+  )[0];
+  console.log("sys", SystemProgram.programId);
+
+  let echoIx1 = new TransactionInstruction({
+    keys: [
+      {
+        pubkey: authorized_buffer,
+        isSigner: false,
+        isWritable: true,
+      },
+      {
+        pubkey: authority.publicKey,
+        isSigner: true,
+        isWritable: false,
+      },
+      {
+        pubkey: SystemProgram.programId,
+        isSigner: false,
+        isWritable: false,
+      },
+    ],
+    programId: programId,
+    data: Buffer.concat([
+      idx1,
+      buffer_seed_buf,
+      Buffer.from(new Uint8Array(new BN(echo.length + 9).toArray("le", 8))),
+    ]),
+  });
+
+  // end of instructions
+
+  let tx = new Transaction();
+  tx.add(echoIx1);
   let txid = await sendAndConfirmTransaction(
     connection,
     tx,
-    [feePayer, echoBuffer],
+    [feePayer, authority],
     {
       skipPreflight: true,
       preflightCommitment: "confirmed",
       confirmation: "confirmed",
     }
   );
-  console.log("7");
+
   console.log(`https://explorer.solana.com/tx/${txid}?cluster=devnet`);
 
   data = (await connection.getAccountInfo(echoBuffer.publicKey)).data;

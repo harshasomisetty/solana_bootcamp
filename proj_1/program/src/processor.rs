@@ -2,8 +2,15 @@ use std::cmp;
 
 use borsh::BorshDeserialize;
 use solana_program::{
-    account_info::AccountInfo, entrypoint::ProgramResult, msg, program_error::ProgramError,
+    account_info::{next_account_info, AccountInfo},
+    entrypoint::ProgramResult,
+    msg,
+    program::{invoke, invoke_signed},
+    program_error::ProgramError,
     pubkey::Pubkey,
+    system_instruction,
+    system_program::ID as SYSTEM_PROGRAM_ID,
+    sysvar::{rent::Rent, Sysvar},
 };
 
 use crate::error::EchoError;
@@ -20,10 +27,9 @@ impl Processor {
         let instruction = EchoInstruction::try_from_slice(instruction_data)
             .map_err(|_| ProgramError::InvalidInstructionData)?;
 
+        let accounts_iter = &mut _accounts.iter();
         match instruction {
             EchoInstruction::Echo { data } => {
-                msg!("sdf {:?}", data);
-                msg!("accounts {:?}", _accounts);
                 msg!("Instruction: Echo");
 
                 if _accounts[0].data.borrow().iter().all(|&x| x != 0) {
@@ -43,9 +49,25 @@ impl Processor {
                 Ok(())
             }
             EchoInstruction::InitializeAuthorizedEcho {
-                buffer_seed: _,
-                buffer_size: _,
+                buffer_seed,
+                buffer_size,
             } => {
+                let authorized_buffer = next_account_info(accounts_iter)?;
+                let authority = next_account_info(accounts_iter)?;
+                let system_program = next_account_info(accounts_iter)?;
+
+                let (authorized_buffer_key, bump_seed) = Pubkey::find_program_address(
+                    &[
+                        b"authority",
+                        authority.key.as_ref(),
+                        &buffer_seed.to_le_bytes(),
+                    ],
+                    _program_id,
+                );
+
+                msg!("buffer_seed: {:?}", buffer_seed);
+                msg!("buffer_size: {:?}", buffer_size);
+                msg!("authorized_buf_key {:?}", authorized_buffer_key);
                 msg!("Instruction: InitializeAuthorizedEcho");
                 Err(EchoError::NotImplemented.into())
             }
