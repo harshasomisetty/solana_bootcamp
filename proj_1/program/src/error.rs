@@ -8,6 +8,10 @@ pub enum EchoError {
     NotImplemented,
     #[error("Nonzero data")]
     NonzeroData,
+    #[error("Checking authority key")]
+    DifferentAuthority,
+    #[error("Not a Signer")]
+    NotSigner,
 }
 
 impl From<EchoError> for ProgramError {

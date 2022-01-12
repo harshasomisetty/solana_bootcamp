@@ -15,8 +15,8 @@ const main = async () => {
   const programId = new PublicKey(args[0]);
   const echo = args[1];
 
-  const connection = new Connection("http://127.0.0.1:8899");
-  // const connection = new Connection("https://api.devnet.solana.com");
+  // const connection = new Connection(`http://127.0.0.1:8899`);
+  const connection = new Connection(`https://api.devnet.solana.com`);
 
   const feePayer = new Keypair();
   const echoBuffer = new Keypair();
@@ -143,7 +143,6 @@ const main = async () => {
   });
 
   console.log(`https://explorer.solana.com/tx/${txid}?cluster=devnet`);
-
   // data = (await connection.getAccountInfo(echoBuffer.publicKey, "confirmed"))
   data = (await connection.getAccountInfo(authorized_buffer, "confirmed")).data;
   console.log("Echo Buffer Text:", data.toString());
