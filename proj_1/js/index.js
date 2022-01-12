@@ -116,7 +116,7 @@ const main = async () => {
         isWritable: true,
       },
       {
-        pubkey: authority,
+        pubkey: authority.publicKey,
         isSigner: true,
         isWritable: false,
       },
@@ -128,13 +128,14 @@ const main = async () => {
       message,
     ]),
   });
-  console.log("auth buf", authorized_buffer);
+  console.log("autority key frontend ", authority.publicKey);
   // end of instructions
 
   let tx = new Transaction();
-  // tx.add(echoIx1).add(echoIx2);
-  tx.add(createIx).add(echoIx);
+  tx.add(echoIx1).add(echoIx2);
+  // tx.add(createIx).add(echoIx);
   let txid = await sendAndConfirmTransaction(connection, tx, [authority], {
+    // let txid = await sendAndConfirmTransaction(connection, tx, [feePayer, echoBuffer], {
     skipPreflight: true,
     preflightCommitment: "confirmed",
     confirmation: "confirmed",
@@ -143,8 +144,8 @@ const main = async () => {
 
   console.log(`https://explorer.solana.com/tx/${txid}?cluster=devnet`);
 
-  data = (await connection.getAccountInfo(echoBuffer.publicKey, "confirmed"))
-    .data;
+  // data = (await connection.getAccountInfo(echoBuffer.publicKey, "confirmed"))
+  data = (await connection.getAccountInfo(authorized_buffer, "confirmed")).data;
   console.log("Echo Buffer Text:", data.toString());
 };
 
