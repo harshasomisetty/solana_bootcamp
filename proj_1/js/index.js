@@ -57,7 +57,8 @@ const main = async () => {
 
   // 1st instruction
   const idx1 = Buffer.from(new Uint8Array([1]));
-  const authority = new Keypair();
+  let authority = feePayer;
+  // const authority = new Keypair();
 
   const buffer_seed = 10;
   const buffer_seed_buf = Buffer.from(
@@ -66,11 +67,16 @@ const main = async () => {
 
   const authorized_buffer = (
     await PublicKey.findProgramAddress(
-      ["authority", authority.publicKey.toBuffer(), buffer_seed_buf],
+      [
+        Buffer.from("authority"),
+        authority.publicKey.toBuffer(),
+        buffer_seed_buf,
+      ],
       programId
     )
   )[0];
-  console.log("sys", SystemProgram.programId);
+  const b = Buffer.from("authority", "UTF-8");
+  console.log(b, b.toString());
 
   let echoIx1 = new TransactionInstruction({
     keys: [
@@ -97,25 +103,22 @@ const main = async () => {
       Buffer.from(new Uint8Array(new BN(echo.length + 9).toArray("le", 8))),
     ]),
   });
-
+  console.log("auth buf", authorized_buffer);
   // end of instructions
 
   let tx = new Transaction();
   tx.add(echoIx1);
-  let txid = await sendAndConfirmTransaction(
-    connection,
-    tx,
-    [feePayer, authority],
-    {
-      skipPreflight: true,
-      preflightCommitment: "confirmed",
-      confirmation: "confirmed",
-    }
-  );
+  let txid = await sendAndConfirmTransaction(connection, tx, [authority], {
+    skipPreflight: true,
+    preflightCommitment: "confirmed",
+    confirmation: "confirmed",
+    commitment: "confirmed",
+  });
 
   console.log(`https://explorer.solana.com/tx/${txid}?cluster=devnet`);
 
-  data = (await connection.getAccountInfo(echoBuffer.publicKey)).data;
+  data = (await connection.getAccountInfo(echoBuffer.publicKey, "confirmed"))
+    .data;
   console.log("Echo Buffer Text:", data.toString());
 };
 

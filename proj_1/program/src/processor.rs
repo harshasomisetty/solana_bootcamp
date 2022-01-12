@@ -16,6 +16,15 @@ use solana_program::{
 use crate::error::EchoError;
 use crate::instruction::EchoInstruction;
 
+pub fn assert_with_msg(statement: bool, err: ProgramError, msg: &str) -> ProgramResult {
+    if !statement {
+        msg!(msg);
+        Err(err)
+    } else {
+        Ok(())
+    }
+}
+
 pub struct Processor {}
 
 impl Processor {
@@ -56,7 +65,7 @@ impl Processor {
                 let authority = next_account_info(accounts_iter)?;
                 let system_program = next_account_info(accounts_iter)?;
 
-                let (authorized_buffer_key, bump_seed) = Pubkey::find_program_address(
+                let (authorized_buffer_key, bump) = Pubkey::find_program_address(
                     &[
                         b"authority",
                         authority.key.as_ref(),
@@ -65,13 +74,44 @@ impl Processor {
                     _program_id,
                 );
 
-                msg!("buffer_seed: {:?}", buffer_seed);
-                msg!("buffer_size: {:?}", buffer_size);
-                msg!("authorized_buf_key {:?}", authorized_buffer_key);
+                assert_with_msg(
+                    authority.is_signer,
+                    ProgramError::MissingRequiredSignature,
+                    "Authority must sign",
+                )?;
+                msg!("signing");
+                invoke_signed(
+                    &system_instruction::create_account(
+                        authority.key,
+                        authorized_buffer.key,
+                        Rent::get()?.minimum_balance(buffer_size),
+                        buffer_size.try_into().unwrap(),
+                        _program_id,
+                    ),
+                    &[
+                        authority.clone(),
+                        authorized_buffer.clone(),
+                        system_program.clone(),
+                    ],
+                    &[&[
+                        b"authority",
+                        authority.key.as_ref(),
+                        &buffer_seed.to_le_bytes(),
+                        &[bump],
+                    ]],
+                )?;
+                let mut data_arr = authorized_buffer.try_borrow_mut_data()?;
+
+                data_arr[0] = bump;
+                buffer[1..9].clone_from_slice(&buffer_seed.to_le_bytes());
+
                 msg!("Instruction: InitializeAuthorizedEcho");
                 Err(EchoError::NotImplemented.into())
             }
             EchoInstruction::AuthorizedEcho { data: _ } => {
+                for n in 9..buffer_size {
+                    data_arr[n + 1] = data[n];
+                }
                 msg!("Instruction: AuthorizedEcho");
                 Err(EchoError::NotImplemented.into())
             }
