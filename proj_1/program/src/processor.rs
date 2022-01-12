@@ -39,16 +39,21 @@ impl Processor {
         let accounts_iter = &mut _accounts.iter();
         match instruction {
             EchoInstruction::Echo { data } => {
-                msg!("Instruction: Echo");
                 let account = next_account_info(accounts_iter)?;
 
                 let mut data_arr = account.try_borrow_mut_data()?;
 
                 let write_size = cmp::min(data_arr.len(), data.len());
 
-                for n in 0..data_arr.len() {
+                if data_arr.len() == 0 {
                     msg!("nonzero rip");
                     return Err(EchoError::NonzeroData.into());
+                }
+                for n in 0..data_arr.len() {
+                    if data_arr[n] != 0 {
+                        msg!("nonzero rip");
+                        return Err(EchoError::NonzeroData.into());
+                    }
                 }
 
                 for n in 0..write_size {
@@ -125,33 +130,26 @@ impl Processor {
                 );
 
                 assert_with_msg(
-                    &authorized_buffer_key != authorized_buffer.key,
+                    &authorized_buffer_key == authorized_buffer.key,
                     EchoError::DifferentAuthority.into(),
                     "Authorities are different",
-                );
+                )?;
 
                 assert_with_msg(
                     authority.is_signer,
                     EchoError::NotSigner.into(),
                     "Authority is not the signer",
-                );
-
-                msg!("authorized buff key computed {:?}", authorized_buffer_key);
-                msg!("authority key {:?}", authorized_buffer.key);
+                )?;
 
                 let write_size = cmp::min(data_arr.len() - 9, data.len());
 
-                // msg!("data {:?}", data);
-                msg!("data arr {:?}", data_arr);
-                // msg!("write size {:?}", write_size);
                 for n in 9..(data_arr.len()) {
                     data_arr[n] = 0
                 }
-                msg!("cleaned data arr {:?}", data_arr);
+
                 for n in 0..write_size {
                     data_arr[n + 9] = data[n];
                 }
-                msg!("after data arr {:?}", data_arr);
 
                 Ok(())
             }
