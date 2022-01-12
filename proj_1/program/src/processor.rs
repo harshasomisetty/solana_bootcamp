@@ -103,17 +103,32 @@ impl Processor {
                 let mut data_arr = authorized_buffer.try_borrow_mut_data()?;
 
                 data_arr[0] = bump;
-                buffer[1..9].clone_from_slice(&buffer_seed.to_le_bytes());
+                data_arr[1..9].clone_from_slice(&buffer_seed.to_le_bytes());
 
-                msg!("Instruction: InitializeAuthorizedEcho");
-                Err(EchoError::NotImplemented.into())
+                Ok(())
             }
-            EchoInstruction::AuthorizedEcho { data: _ } => {
-                for n in 9..buffer_size {
-                    data_arr[n + 1] = data[n];
+            EchoInstruction::AuthorizedEcho { data } => {
+                msg!("Instruction: Echo");
+
+                let account = next_account_info(accounts_iter)?;
+
+                if account.data.borrow().iter().all(|&x| x != 0) {
+                    msg!("nonzero rip");
+                    return Err(EchoError::NonzeroData.into());
                 }
-                msg!("Instruction: AuthorizedEcho");
-                Err(EchoError::NotImplemented.into())
+
+                // msg!("empty {:?}", _accounts[0].data_is_empty());
+                let mut data_arr = account.try_borrow_mut_data()?;
+
+                let write_size = cmp::min(data_arr.len() - 9, data.len());
+                msg!("data arr {:?}", data_arr);
+                msg!("write size {:?}", write_size);
+
+                for n in 0..write_size {
+                    data_arr[n + 9] = data[n];
+                }
+
+                Ok(())
             }
             EchoInstruction::InitializeVendingMachineEcho {
                 price: _,

@@ -52,11 +52,15 @@ const main = async () => {
       },
     ],
     programId: programId,
-    data: Buffer.concat([idx, messageLen, message]),
+    data: Buffer.concat([
+      Buffer.from(new Uint8Array([0])),
+      messageLen,
+      message,
+    ]),
   });
 
   // 1st instruction
-  const idx1 = Buffer.from(new Uint8Array([1]));
+
   let authority = feePayer;
   // const authority = new Keypair();
 
@@ -77,7 +81,7 @@ const main = async () => {
   )[0];
   const b = Buffer.from("authority", "UTF-8");
   console.log(b, b.toString());
-
+  console.log("tx1");
   let echoIx1 = new TransactionInstruction({
     keys: [
       {
@@ -98,16 +102,38 @@ const main = async () => {
     ],
     programId: programId,
     data: Buffer.concat([
-      idx1,
+      Buffer.from(new Uint8Array([1])),
       buffer_seed_buf,
       Buffer.from(new Uint8Array(new BN(echo.length + 9).toArray("le", 8))),
+    ]),
+  });
+  console.log("tx2");
+  let echoIx2 = new TransactionInstruction({
+    keys: [
+      {
+        pubkey: authorized_buffer,
+        isSigner: false,
+        isWritable: true,
+      },
+      {
+        pubkey: authority,
+        isSigner: true,
+        isWritable: false,
+      },
+    ],
+    programId: programId,
+    data: Buffer.concat([
+      Buffer.from(new Uint8Array([2])),
+      messageLen,
+      message,
     ]),
   });
   console.log("auth buf", authorized_buffer);
   // end of instructions
 
   let tx = new Transaction();
-  tx.add(echoIx1);
+  // tx.add(echoIx1).add(echoIx2);
+  tx.add(createIx).add(echoIx);
   let txid = await sendAndConfirmTransaction(connection, tx, [authority], {
     skipPreflight: true,
     preflightCommitment: "confirmed",
